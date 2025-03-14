@@ -57,4 +57,5 @@ enum class DoubleKey(
 
     Dag_resistentie_target("Dag_resistentie_target", 5.2,4.0,8.0),
     Nacht_resistentie_target("Dacht_resistentie_target", 5.2,4.0,8.0),
+    Uren_resistentie("Uren_resistentie", 2.5,1.0,5.0),
 }

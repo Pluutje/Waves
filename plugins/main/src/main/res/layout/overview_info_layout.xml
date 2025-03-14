@@ -419,7 +419,7 @@
         <ImageView
             android:id="@+id/sensitivity_icon"
             android:layout_width="wrap_content"
-            android:layout_height="40dp"
+            android:layout_height="30dp"
             android:layout_gravity="center_horizontal"
             android:contentDescription="@string/a11y_autosens_label"
             app:srcCompat="@drawable/ic_swap_vert_black_48dp_green" />
@@ -429,8 +429,8 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:gravity="center_horizontal"
-            android:paddingTop="10dp"
-            android:paddingBottom="0dp"
+            android:paddingTop="-7dp"
+            android:paddingBottom="-1dp"
             android:text="100%"
             android:textColor="#28A9E9"
             android:textStyle="bold"
@@ -442,7 +442,7 @@
             android:id="@+id/variable_sensitivity"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="-5dp"
+            android:layout_marginTop="-1dp"
             android:gravity="center_vertical"
             android:paddingBottom="0dp"
             android:text="n/a"

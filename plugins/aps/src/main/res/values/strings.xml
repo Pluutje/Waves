@@ -316,8 +316,11 @@
     <string name="Uren_resistentie_title">Aantal uur</string>
 
 
-    <string name="stappenAanUit_summary">Bij activering boven de drempel wordt de insuline afgifte met het ingestelde percentage gecorrigeerd</string>
+    <string name="stappenAanUit_summary">Bij activering boven de drempel wordt de insuline afgifte gecorrigeerd</string>
     <string name="stappenAanUit_title">Stappen insuline-correctie</string>
+
+    <string name="stappenHorloge_summary">Indien ingeschakeld worden de stappen uit het horloge gebruikt</string>
+    <string name="stappenHorloge_title">Gebruik stappen van horloge</string>
     <string name="stap_activiteteitPerc_summary">Insuline percentage bij overschrijding van de stappendrempel</string>
     <string name="stap_activiteteitPerc_title">Insuline percentage</string>
     <string name="stap_5minuten_summary">Stappen benodigd in 5 minuten om te activeren. De 30 en 60 minuten drempel wordt berekend t.o.v. deze waarde.</string>

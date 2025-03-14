@@ -118,4 +118,5 @@ enum class BooleanKey(
 
     Resistentie("Resistentie",true),
     stappenAanUit("stappenAanUit",true),
+    stappenHorloge("stappenHorloge",true),
 }

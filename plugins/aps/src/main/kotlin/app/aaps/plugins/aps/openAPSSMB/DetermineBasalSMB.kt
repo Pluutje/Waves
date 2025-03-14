@@ -44,15 +44,19 @@ import app.aaps.core.keys.StringKey
 import java.io.File
 import java.io.IOException
 import java.util.Scanner
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+//import app.aaps.database.entities.StepsCount
 
 
 
 @Singleton
 data class uur_minuut(val uur: Int, val minuut: Int)
-
 data class Resistentie_class(val resistentie: Double, val log: String)
+data class Stappen_class(val StapPercentage: Float,val StapTarget: Float, val log: String)
 data class Bolus_Basaal(val BolusViaBasaal: Boolean, val BasaalStand: Float , val ResterendeTijd: Float)
 data class Extra_Insuline(val ExtraIns_AanUit: Boolean, val ExtraIns_waarde: Double ,val log: String)
+
 class DetermineBasalSMB @Inject constructor(
     private val profileUtil: ProfileUtil,
     private val activePlugin: ActivePlugin,
@@ -62,6 +66,7 @@ class DetermineBasalSMB @Inject constructor(
     private val preferences: Preferences,
     private val fabricPrivacy: FabricPrivacy,
     private val dateUtil: DateUtil,
+ //   private val stepsCount: StepsCount,
 
 ) {
 
@@ -326,7 +331,8 @@ class DetermineBasalSMB @Inject constructor(
         val DagresistentiePerc = preferences.get(IntKey.Dag_resistentiePerc)
         val NachtresistentiePerc = preferences.get(IntKey.Nacht_resistentiePerc)
         val Dagenresistentie = preferences.get(IntKey.Dagen_resistentie)
-        val Urenresistentie = preferences.get(IntKey.Uren_resistentie)
+     //   val Urenresistentie = preferences.get(IntKey.Uren_resistentie)
+        val Urenresistentie = preferences.get(DoubleKey.Uren_resistentie)
         val Dagresistentie_target = preferences.get(DoubleKey.Dag_resistentie_target)
         val Nachtresistentie_target = preferences.get(DoubleKey.Nacht_resistentie_target)
         val OchtendStart = preferences.get(StringKey.OchtendStart)
@@ -382,41 +388,68 @@ class DetermineBasalSMB @Inject constructor(
         if (isInTijdBereik(uurVanDag, minuten, NachtStartUur, NachtStartMinuut, OchtendStartUur, OchtendStartMinuut)) {
             resistentie_percentage = NachtresistentiePerc
             target = Nachtresistentie_target
-            log_resistentie = log_resistentie + " ● Tijd: " + uurVanDag.toString() + ":" + minuutTxt + " → Nacht"
-            log_resistentie = log_resistentie + " ● perc.: " + resistentie_percentage + "%" + "\n"
-            log_resistentie = log_resistentie + "                         Target: " + round(target,1) + " mmol/l" + "\n"
+            log_resistentie = log_resistentie + " ● Tijd: " + uurVanDag.toString() + ":" + minuutTxt + " → s'Nachts" + "\n"
+            log_resistentie = log_resistentie + "      → perc.: " + resistentie_percentage + "%" + "\n"
+            log_resistentie = log_resistentie + "      → Target: " + round(target,1) + " mmol/l" + "\n"
         } else {
             resistentie_percentage = DagresistentiePerc
             target = Dagresistentie_target
-            log_resistentie = log_resistentie + " ● Tijd: " + uurVanDag.toString() + ":" + minuutTxt + " → Dag"
-            log_resistentie = log_resistentie + " ● perc.: " + resistentie_percentage + "%" + "\n"
-            log_resistentie = log_resistentie + "                       Target: " + round(target,1) + " mmol/l" + "\n"
+            log_resistentie += " ● Tijd: " + uurVanDag.toString() + ":" + minuutTxt + " → Overdag"+ "\n"
+            log_resistentie += "      → perc.: " + resistentie_percentage + "%" + "\n"
+            log_resistentie += "      → Target: " + round(target,1) + " mmol/l" + "\n"
         }
+
+        val urenTot = (uurVanDag + 1 + Urenresistentie)
+        var urenTotUur = urenTot.toInt() // Uren als geheel getal
+        var urenTotMinuut = ((urenTot - urenTotUur) * 60).toInt() + minuten // Minuten optellen
+
+// Controleer of minuten >= 60 en pas aan
+        if (urenTotMinuut >= 60) {
+            urenTotMinuut -= 60
+            urenTotUur += 1
+        }
+       // val urenTot = (uurVanDag + 1 + Urenresistentie)
+       // val urenTotUur = urenTot.toInt() // Uren als geheel getal
+       // val urenTotMinuut = ((urenTot - urenTotUur) * 60).toInt() // Rest als minuten
+        log_resistentie += " ● Referentie periode :" + "\n"
+        log_resistentie += "      → afgelopen " + Dagenresistentie.toString() + " dagen" + "\n"
+        log_resistentie += "      → van ${uurVanDag + 1}:$minuutTxt tot $urenTotUur:${String.format("%02d", urenTotMinuut)}\n"
+
 
         val macht =  Math.pow(resistentie_percentage.toDouble(), 1.4)/2800
         val numPairs = Dagenresistentie // Hier kies je hoeveel paren je wilt gebruiken
-        val uren = Urenresistentie
+    //    val uren = Urenresistentie
 
-        val x = uren.toLong()         // Constante waarde voor ± x
-        val intervals = mutableListOf<Pair<Long, Long>>()
+     //   val x = uren.toLong()         // Constante waarde voor ± x
+     //   val intervals = mutableListOf<Pair<Long, Long>>()
+        val x = Urenresistentie
+        val intervals = mutableListOf<Pair<Double, Double>>()
+
 
         for (i in 1..numPairs) {
-            val base = (24 * i).toLong()  // Verhoogt telkens met 24: 24, 48, 72, ...
-            intervals.add(Pair(base , base - x))
+            val base = (24.0 * i) - 1    // Verhoogt telkens met 24: 24, 48, 72, ...
+            intervals.add(Pair(base, base - x))
         }
 
         val correctionFactors = mutableListOf<Double>()
+        val formatter = DateTimeFormatter.ofPattern("dd-MM")
+        val today = LocalDate.now()
 
         for ((index, interval) in intervals.take(numPairs).withIndex()) {
-            // val bgGem = logBgHistory(interval.first, interval.second, x)
-            val (bgGem, bgStdDev) = logBgHistoryWithStdDev(interval.first, interval.second, x)
-            val rel_std = (bgStdDev/bgGem*100).toInt()
+
+            val startTime = interval.first.toLong()
+            val endTime = interval.second.toLong()
+
+            val (bgGem, bgStdDev) = logBgHistoryWithStdDev(startTime, endTime, x.toLong())
+            val rel_std = (bgStdDev / bgGem * 100).toInt()
             val cf = calculateCorrectionFactor(bgGem, target, macht, rel_std)
-            log_resistentie += " → Dag ${(index + 1)} : correctie percentage = " + (cf * 100).toInt() + "%" + "\n"
+
+            val dateString = today.minusDays(index.toLong()).format(formatter)
+
+            log_resistentie += " → ${dateString} : correctie percentage = " + (cf * 100).toInt() + "%" + "\n"
             log_resistentie += "   ϟ Bg gem: ${round(bgGem, 1)}     ϟ Rel StdDev: $rel_std %.\n"
 
             correctionFactors.add(cf)
-
         }
 // Bereken CfEff met het gekozen aantal correctiefactoren
         var tot_gew_gem = 0
@@ -455,7 +488,96 @@ class DetermineBasalSMB @Inject constructor(
 
     }
 
+    fun Stappen(): Stappen_class {
 
+        var log_Stappen = " ﴿ Stappen ﴾" + "\n"
+        var stap_perc = 100f
+        var stap_target = 0f
+
+        if (!preferences.get(BooleanKey.stappenAanUit)) {
+            log_Stappen += " → resistentie aan/uit: uit " + "\n"
+            return Stappen_class(stap_perc,stap_target,log_Stappen)
+        }
+
+        val now = System.currentTimeMillis()
+        val timeMillis5 = now - 5 * 60 * 1000 // 5 minutes en millisecondes
+        val timeMillis30 = now - 30 * 60 * 1000 // 30 minutes en millisecondes
+        val timeMillis180 = now - 180 * 60 * 1000 // 180 minutes en millisecondes
+
+        val allStepsCounts = persistenceLayer.getStepsCountFromTimeToTime(timeMillis180, now)
+
+        var recentSteps5Minutes = 1
+        var recentSteps30Minutes = 1
+
+        if (preferences.get(BooleanKey.stappenAanUit)) {
+            allStepsCounts.forEach { stepCount ->
+                val timestamp = stepCount.timestamp
+                if (timestamp >= timeMillis5) {
+                    recentSteps5Minutes = stepCount.steps5min
+                }
+                if (timestamp >= timeMillis30) {
+                    recentSteps30Minutes = stepCount.steps30min
+                }
+            }
+        }
+
+        val min5Stap = preferences.get(IntKey.stap_5minuten)
+        val min30Stap = ((min5Stap * 30 / 5)/1.6).toInt()
+
+
+// Variabelen om de actieve duur en huidige status bij te houden
+        val thresholds = mapOf(
+            " 5 minuten" to min5Stap,
+            "30 minuten" to min30Stap  //,
+
+            )
+            var allThresholdsMet = true
+
+            // Controleer de drempels
+            thresholds.forEach { (label, threshold) ->
+                val steps = when (label) {
+                    " 5 minuten" -> recentSteps5Minutes
+                    "30 minuten" -> recentSteps30Minutes
+
+                    else -> 0
+                }
+                log_Stappen += " ● $label: $steps stappen ${if (steps >= threshold) ">= drempel ($threshold)" else "< drempel ($threshold)"}\n"
+                if (steps < threshold) allThresholdsMet = false
+            }
+
+            if (allThresholdsMet) {
+                StapRetentie = (StapRetentie + 1).coerceAtMost(preferences.get(IntKey.stap_retentie)) // Limiteer
+                log_Stappen += " ↗ Drempel overschreden. ($StapRetentie maal).\n"
+            } else {
+                log_Stappen += " → Drempel niet overschreden.\n"
+                if (StapRetentie > 0) {
+                    StapRetentie = StapRetentie -1
+
+                } // Verlaag actieve duur als deze nog actief is
+            }
+
+            // Verhoog target
+            if (StapRetentie > 0) {
+                if (allThresholdsMet) {
+                    stap_perc = preferences.get(IntKey.stap_activiteteitPerc).toFloat()
+                    log_Stappen += " ● Overschrijding drempels → Insuline perc. $stap_perc %.\n"
+                    stap_target = 36f
+                } else {
+                    stap_perc = preferences.get(IntKey.stap_activiteteitPerc).toFloat()
+                    log_Stappen += " ● nog $StapRetentie * retentie → Insuline perc. $stap_perc %.\n"
+                    stap_target = 36f
+                }
+            } else {
+                stap_perc = 100f
+                log_Stappen += " ● Geen activiteit → Insuline perc. $stap_perc %.\n"
+            }
+
+        val display_Stap_perc = stap_perc.toInt()
+
+
+        return Stappen_class(stap_perc,stap_target,log_Stappen)
+
+    }
 
     fun ActExtraIns(): Extra_Insuline {
 
@@ -671,6 +793,15 @@ class DetermineBasalSMB @Inject constructor(
 
         consoleLog(log_ExtraIns)
 
+
+
+        val(stap_perc,stap_target,log_stappen) = Stappen()
+
+
+        consoleLog(log_stappen)
+
+
+
         if (high_temptarget_raises_sensitivity && profile.temptargetSet && target_bg > normalTarget
             || profile.low_temptarget_lowers_sensitivity && profile.temptargetSet && target_bg < normalTarget
         ) {
@@ -694,8 +825,10 @@ class DetermineBasalSMB @Inject constructor(
 
         basal = profile.current_basal * sensitivityRatio
         basal = round_basal(basal)
+        val txtProfileBasal = round(profile_current_basal,2)
+        val txtBasal = round(basal,2)
         if (basal != profile_current_basal)
-            consoleLog("Adjusting basal from $profile_current_basal to $basal; ")
+            consoleLog("Adjusting basal from $txtProfileBasal to $txtBasal; ")
         else
             consoleLog("Basal unchanged: $basal; ")
 
@@ -718,6 +851,7 @@ class DetermineBasalSMB @Inject constructor(
                 target_bg = new_target_bg
             }
         }
+        target_bg += stap_target
 
         val iobArray = iob_data_array
         val iob_data = iobArray[0]
@@ -744,15 +878,14 @@ class DetermineBasalSMB @Inject constructor(
                     consoleLog("ISF unchanged: $adjusted_sens")
                 }
 
-
-
                 adjusted_sens
 
-                //console.log(" (autosens ratio "+sensitivityRatio+")");
             }
         if (extraIns_AanUit) {
             sens = sens / extraIns_Factor
-
+        }
+        if (preferences.get(BooleanKey.stappenAanUit)) {
+            sens = sens / (stap_perc/100)
         }
         
 

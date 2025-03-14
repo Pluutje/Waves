@@ -1222,7 +1222,7 @@ class OverviewFragment : DaggerFragment(), View.OnClickListener, OnLongClickList
             1.0  // Voorkomt een crash als het bestand niet bestaat
         }
 
-       // val ratioUsed = request?.autosensResult?.ratio ?: 1.0
+        // val ratioUsed = request?.autosensResult?.ratio ?: 1.0
         val ratioUsed = ratioFactor
 
         if (variableSens != isfMgdl && variableSens != 0.0 && isfMgdl != null) {
@@ -1260,12 +1260,25 @@ class OverviewFragment : DaggerFragment(), View.OnClickListener, OnLongClickList
         } else {
             binding.infoLayout.sensitivity.text =
                 lastAutosensData?.let {
-                 //   rh.gs(app.aaps.core.ui.R.string.autosens_short, it.autosensResult.ratio * 100)
+                    //   rh.gs(app.aaps.core.ui.R.string.autosens_short, it.autosensResult.ratio * 100)
                     rh.gs(app.aaps.core.ui.R.string.autosens_short, ratioFactor * 100)
                 } ?: ""
             binding.infoLayout.variableSensitivity.visibility = View.GONE
             binding.infoLayout.sensitivity.visibility = View.VISIBLE
         }
+
+        val overViewText: ArrayList<String> = ArrayList()
+        overViewText.add(rh.gs(app.aaps.core.ui.R.string.autosens_short, ratioUsed*100))
+        overViewText.add(
+            String.format(
+                Locale.getDefault(), "%1$.1f→%2$.1f",
+                profileUtil.fromMgdlToUnits(isfMgdl!!, profileFunction.getUnits()),
+                profileUtil.fromMgdlToUnits(variableSens, profileFunction.getUnits())
+            )
+        )
+        binding.infoLayout.sensitivity.text = overViewText.joinToString("\n")
+        binding.infoLayout.sensitivity.visibility = View.VISIBLE
+
     }
 
     private fun updatePumpStatus() {

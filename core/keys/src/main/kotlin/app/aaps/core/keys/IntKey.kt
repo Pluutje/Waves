@@ -78,7 +78,7 @@ enum class IntKey(
     Dag_resistentiePerc("Dag_resistentiePerc", 100,10,200),
     Nacht_resistentiePerc("Nacht_resistentiePerc", 100,10,200),
     Dagen_resistentie("Dagen_resistentie", 3,1,7),
-    Uren_resistentie("Uren_resistentie", 2,1,5),
+   // Uren_resistentie("Uren_resistentie", 2,1,5),
 
     stap_activiteteitPerc("stap_activiteteitPerc", 50,10,100),
     stap_5minuten("stap_5minuten", 200,100,300),
